@@ -1,25 +1,43 @@
 ---
 - name: Upgrade EAP
-  hosts: eap
-  become: yes
+  hosts: all:!localhost
+  become: true
   collections:
     - redhat.eap
-  vars:
-    eap_offline_install: True
-    eap_apply_cp: True
-    eap_patch_version: "7.4.9"
+  vars_files:
+    - vars.yml
+    - upgrade-vars.yml
+  pre_tasks:
+    - name: Build cluster node list for JGroups TCP PING
+      ansible.builtin.include_tasks: tasks/cluster_nodes.yml
+
+    - name: Stop EAP before upgrade
+      ansible.builtin.service:
+        name: "{{ eap_service_name | default('eap') }}"
+        state: stopped
+
   roles:
-    - role: eap_install
-    - role: eap_systemd
+    - eap_install
+    - eap_migration
+    - eap_systemd
   tasks:
     - name: Restart eap service
       ansible.builtin.service:
-        name: eap
-        state: restarted  
-    - name: Verify management port is accessible
-      ansible.builtin.wait_for:
-        port: 9990
-        host: localhost
-        connect_timeout: 3
-        delay: 10
-        timeout: 60
+        name: "{{ eap_service_name | default('eap') }}"
+        state: restarted
+
+    - name: Report upgraded EAP version
+      ansible.builtin.include_tasks: tasks/eap_version.yml
+      vars:
+        eap_version_message: upgraded to
+
+- name: Verify upgraded EAP
+  hosts: all:!localhost
+  become: true
+  collections:
+    - redhat.eap
+  vars_files:
+    - vars.yml
+    - upgrade-vars.yml
+  roles:
+    - eap_validation

@@ -1,72 +1,57 @@
 ---
-- name: "Installation and Configuration"
-  hosts: eap
-  become: yes
+- name: Fix AAP Localhost Sudo Issue
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Disable privilege escalation for localhost
+      ansible.builtin.add_host:
+        name: localhost
+        ansible_become: false
+        ansible_connection: local
+
+- name: Install and configure EAP cluster
+  hosts: all:!localhost
+  become: true
   collections:
     - redhat.eap
+  vars_files:
+    - vars.yml
+  pre_tasks:
+    - name: Build cluster node list for JGroups TCP PING
+      ansible.builtin.include_tasks: tasks/cluster_nodes.yml
   roles:
     - eap_install
-    - eap_driver
     - eap_systemd
-  vars:
-    service_systemd_env_file: "/etc/eap.conf"
-    service_systemd_conf_file: "/usr/lib/systemd/system/eap.service"
-    eap_config_base: standalone-ha.xml
-    eap_offline_install: True
-    eap_apply_cp: True
-    eap_version: "7.4.0"
-    eap_patch_version: "7.4.8"
-    eap_systemd_enable: True
-    ansible_distribution: 'RedHat'
-    eap_enable_yml_config: True
-    eap_yml_configs: [ eap_ymlconfig.yml.j2 ]
-    app:
-      name: 'helloworld.war'
-      url: 'https://drive.google.com/uc?export=download&id=16HOaSVF0bSYyjc8a8hkEiDlTqgJuGJfe'
-  pre_tasks:
-    - name: Enable and start the firewalld service
-      become: yes
-      ansible.builtin.systemd:
-        name: firewalld
-        enabled: yes
-        state: started
-    - name: "Configure firewall for EAP ports"
-      ansible.posix.firewalld:
-        port: "{{ item }}"
-        permanent: true
-        state: enabled
-        immediate: yes
-      loop:
-        - 8009/tcp
-        - 8080/tcp
-        - 9990/tcp
-        - 7600/tcp
-        - 7601/tcp
-    - name: Create cluster node list
-      ansible.builtin.set_fact:
-        eap_cluster_nodes: >
-          {{ eap_cluster_nodes | default([]) + [
-               {
-                 "name": item,
-                 "address": 'jgroups-' + item,
-                 "inventory_host": hostvars[item].ansible_default_ipv4.address | default(item) + '[7600]',
-                 "value": hostvars[item].ansible_default_ipv4.address | default(item)
-               }
-             ] }}
-      loop: "{{ ansible_play_batch }}"
-
   tasks:
-    - name: Verify management port is accessible
-      ansible.builtin.wait_for:
-        port: 9990
-        host: localhost
-        connect_timeout: 3
-        delay: 10
-        timeout: 60
-    - name: "Download demo app {{ app.name }} to deploy from {{ app.url }} into deployments"
+    - name: Report installed EAP version
+      ansible.builtin.include_tasks: tasks/eap_version.yml
+      vars:
+        eap_version_message: running
+
+- name: Verify EAP installation
+  ansible.builtin.import_playbook: validate.yml
+
+- name: Deploy JBoss EAP
+  hosts: all:!localhost
+  become: true
+  collections:
+    - redhat.eap
+  vars_files:
+    - vars.yml
+  vars:
+    eap_app_deployment_file: "/tmp/{{ app.name }}"
+    eap_app_deploy_name: "{{ app.name }}"
+    jboss_cli_controller_host: "127.0.0.1"
+    jboss_cli_controller_port: "9990"
+    eap_apps_jboss_cli_deploy_force: true
+  pre_tasks:
+    - name: Download demo app on controller
       ansible.builtin.get_url:
         url: "{{ app.url }}"
-        dest: "{{ eap_home }}/standalone/deployments/"
-        owner: eap
-        group: eap
-        mode: 0644
+        dest: "/tmp/{{ app.name }}"
+        mode: "0644"
+      delegate_to: localhost
+      run_once: true
+      become: false
+  roles:
+    - eap_app_deploy

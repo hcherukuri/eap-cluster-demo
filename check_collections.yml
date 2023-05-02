@@ -1,0 +1,12 @@
+---
+- name: Check Installed Collections
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: List installed collections
+      ansible.builtin.command: ansible-galaxy collection list
+      register: collections_output
+
+    - name: Display collections
+      ansible.builtin.debug:
+        var: collections_output.stdout_lines

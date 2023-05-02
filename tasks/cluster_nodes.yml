@@ -1,0 +1,13 @@
+---
+- name: Create cluster node list
+  ansible.builtin.set_fact:
+    eap_cluster_nodes: >
+      {{ eap_cluster_nodes | default([]) + [
+           {
+             "name": item,
+             "address": 'jgroups-' + item,
+             "inventory_host": hostvars[item].ansible_default_ipv4.address | default(item) + '[7600]',
+             "value": hostvars[item].ansible_default_ipv4.address | default(item)
+           }
+         ] }}
+  loop: "{{ ansible_play_batch }}"

@@ -1,0 +1,10 @@
+---
+- name: Verify EAP installation
+  hosts: all:!localhost
+  become: true
+  collections:
+    - redhat.eap
+  vars_files:
+    - vars.yml
+  roles:
+    - eap_validation

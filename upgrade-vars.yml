@@ -1,0 +1,16 @@
+---
+# Upgrade-specific variables (loaded after vars.yml).
+# Installs EAP 8.1 alongside the existing 8.0 install, migrates configuration,
+# then applies available 8.1.x updates via Prospero.
+
+eap_install_baseline_version: "8.0.0"
+eap_version: "8.1.0"
+eap_prospero_update: true
+eap_install_workdir: /opt/jboss_eap/
+previous_eap_home: "{{ eap_install_workdir }}jboss-eap-{{ (eap_install_baseline_version.split('.'))[0:2] | join('.') }}/"
+target_eap_home: "{{ eap_install_workdir }}jboss-eap-{{ (eap_version.split('.'))[0:2] | join('.') }}/"
+
+eap_migration_config_files: standalone-full-ha.xml
+# Role defaults leave these as null; argument_specs requires strings.
+eap_migration_tool_bin_folder: ""
+eap_migration_server_tool_subfolder_to_configuration: "/migration"

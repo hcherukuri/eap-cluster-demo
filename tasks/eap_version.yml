@@ -1,0 +1,17 @@
+---
+- name: Wait for EAP HTTP port
+  ansible.builtin.wait_for:
+    port: "{{ eap_http_port | default(8080) }}"
+    host: "{{ ansible_default_ipv4.address | default('127.0.0.1') }}"
+    delay: 5
+    timeout: 300
+
+- name: Read installed EAP version from server log
+  ansible.builtin.shell: |
+    grep 'WFLYSRV0049' "{{ eap_home }}standalone/log/server.log" | tail -1
+  register: eap_version_log_line
+  changed_when: false
+
+- name: Display EAP version
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} {{ eap_version_message }} {{ eap_version_log_line.stdout | regex_search('WFLYSRV0049: (.+) starting', '\\1') | first | default(eap_version_log_line.stdout | trim) }}"
