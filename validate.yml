@@ -1,0 +1,8 @@
+---
+- name: Verify EAP installation
+  hosts: eap
+  become: true
+  collections:
+    - redhat.eap
+  roles:
+    - eap_validation

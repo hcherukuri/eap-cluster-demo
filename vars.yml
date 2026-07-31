@@ -1,0 +1,16 @@
+---
+# Shared variables for the eap-cluster-demo playbooks.
+
+eap_version: "8.1.0"
+eap_config_base: standalone-full-ha.xml
+eap_offline_install: true
+eap_systemd_enable: true
+eap_enable_yml_config: true
+eap_yml_configs:
+  - eap_ymlconfig.yml.j2
+eap_yml_configs_repository: "{{ playbook_dir }}/templates/"
+eap_firewalld_enabled: true
+
+app:
+  name: helloworld.war
+  url: https://drive.google.com/uc?export=download&id=16HOaSVF0bSYyjc8a8hkEiDlTqgJuGJfe

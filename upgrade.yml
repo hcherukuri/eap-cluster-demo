@@ -1,25 +1,21 @@
 ---
-- name: Upgrade EAP
+- name: Upgrade EAP to 8.1.5
   hosts: eap
-  become: yes
+  become: true
   collections:
     - redhat.eap
   vars:
-    eap_offline_install: True
-    eap_apply_cp: True
-    eap_patch_version: "7.4.9"
+    eap_version: "8.1.0"
+    eap_offline_install: true
+    eap_prospero_update: true
   roles:
-    - role: eap_install
-    - role: eap_systemd
+    - eap_install
+    - eap_systemd
   tasks:
     - name: Restart eap service
       ansible.builtin.service:
         name: eap
-        state: restarted  
-    - name: Verify management port is accessible
-      ansible.builtin.wait_for:
-        port: 9990
-        host: localhost
-        connect_timeout: 3
-        delay: 10
-        timeout: 60
+        state: restarted
+
+- name: Verify upgraded EAP
+  ansible.builtin.import_playbook: validate.yml
